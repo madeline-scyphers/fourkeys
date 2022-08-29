@@ -16,15 +16,12 @@ import base64
 from datetime import datetime
 import os
 import json
-import sys
 
 import shared
 
 from flask import Flask, request
 
-# sys.path.append("..")
-
-from ..shared.commits_per_release_parser import process_commits_per_release_event
+from commits_per_release_parser import process_commits_per_release_event
 
 
 app = Flask(__name__)
