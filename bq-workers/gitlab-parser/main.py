@@ -16,10 +16,16 @@ import base64
 from datetime import datetime
 import os
 import json
+import sys
 
 import shared
 
 from flask import Flask, request
+
+# sys.path.append("..")
+
+from ..shared.commits_per_release_parser import process_commits_per_release_event
+
 
 app = Flask(__name__)
 
@@ -57,6 +63,10 @@ def index():
 
         shared.insert_row_into_bigquery(event)
 
+        if event:
+            enriched_event = process_enriched_event(event)
+            shared.insert_row_into_events_enriched(enriched_event)
+
     except Exception as e:
         entry = {
                 "severity": "WARNING",
@@ -81,6 +91,7 @@ def process_gitlab_event(headers, msg):
              "note", "tag_push", "issue",
              "pipeline", "job", "deployment",
              "build"}
+    deployment_types = {"pipeline", "deployment"}
 
     metadata = json.loads(base64.b64decode(msg["data"]).decode("utf-8").strip())
 
@@ -95,7 +106,6 @@ def process_gitlab_event(headers, msg):
             if commit["id"] == e_id:
                 time_created = commit["timestamp"]
 
-    if event_type in ("merge_request", "note", "issue", "pipeline"):
         event_object = metadata["object_attributes"]
         e_id = event_object["id"]
         time_created = (
@@ -119,6 +129,9 @@ def process_gitlab_event(headers, msg):
             metadata.get("build_finished_at") or
             metadata.get("build_started_at") or
             metadata.get("build_created_at"))
+
+    if event_type in deployment_types:
+        calculate_commits_per_release(metadata)
 
     # Some timestamps come in a format like "2021-04-28 21:50:00 +0200"
     # BigQuery does not accept this as a valid format
@@ -145,6 +158,15 @@ def process_gitlab_event(headers, msg):
 
     return gitlab_event
 
+
+def process_enriched_event(event):
+    signature = event["signature"]
+    enriched_event = {
+        "events_raw_signature": signature,
+        "enriched_metadata": {}
+    }
+    enriched_event = process_commits_per_release_event(event, enriched_event)
+    return enriched_event
 
 if __name__ == "__main__":
     PORT = int(os.getenv("PORT")) if os.getenv("PORT") else 8080
