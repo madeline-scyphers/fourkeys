@@ -16,7 +16,7 @@ def process_commits_per_release_event(event, enriched_event):
     SELECT raw.id, 
            dply.main_commit,
            JSON_EXTRACT_SCALAR(raw.metadata, '$.before') before,
-           four_keys.json2array(JSON_EXTRACT(raw.metadata, '$.commits')) array_commits,
+           JSON_EXTRACT(raw.metadata, '$.commits') commits,
            dply.time_created
     FROM `four_keys.events_raw` raw
     LEFT JOIN `four_keys.deployments` dply
@@ -32,7 +32,7 @@ def process_commits_per_release_event(event, enriched_event):
     # or where main_commit is not nan
     df["is_release"] = ~df["main_commit"].isna()
 
-    df["array_commits"] = df["array_commits"].map(json.loads)
+    df["array_commits"] = df["commits"].map(json.loads)
     df["array_commits"] = df["array_commits"].map(lambda ls: [d["id"] for d in ls])
 
     def recurse(row):
