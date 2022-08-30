@@ -2,14 +2,13 @@ import json
 import re
 
 from google.cloud import bigquery
-import pandas as pd
 
 
 def process_commits_per_release_event(event, enriched_event):
     # remove mock so it is normalized to github or gitlab
     source = event["source"].strip("mock")
     event_type = event["event_type"]
-    metadata = event["metadata"]
+    metadata = json.loads(event["metadata"])
     deployment_sha = SHA_PARSERS[source][event_type](metadata)
 
     client = bigquery.Client()

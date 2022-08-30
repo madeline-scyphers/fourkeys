@@ -88,7 +88,6 @@ def process_gitlab_event(headers, msg):
              "note", "tag_push", "issue",
              "pipeline", "job", "deployment",
              "build"}
-    deployment_types = {"pipeline", "deployment"}
 
     metadata = json.loads(base64.b64decode(msg["data"]).decode("utf-8").strip())
 
@@ -103,6 +102,7 @@ def process_gitlab_event(headers, msg):
             if commit["id"] == e_id:
                 time_created = commit["timestamp"]
 
+    if event_type in ("merge_request", "note", "issue", "pipeline"):
         event_object = metadata["object_attributes"]
         e_id = event_object["id"]
         time_created = (
@@ -126,9 +126,6 @@ def process_gitlab_event(headers, msg):
             metadata.get("build_finished_at") or
             metadata.get("build_started_at") or
             metadata.get("build_created_at"))
-
-    if event_type in deployment_types:
-        calculate_commits_per_release(metadata)
 
     # Some timestamps come in a format like "2021-04-28 21:50:00 +0200"
     # BigQuery does not accept this as a valid format
@@ -162,7 +159,10 @@ def process_enriched_event(event):
         "events_raw_signature": signature,
         "enriched_metadata": {}
     }
-    enriched_event = process_commits_per_release_event(event, enriched_event)
+    deployment_types = {"pipeline", "deployment"}
+    event_type = event["event_type"]
+    if event_type in deployment_types:
+        enriched_event = process_commits_per_release_event(event, enriched_event)
     return enriched_event
 
 if __name__ == "__main__":
