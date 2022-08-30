@@ -163,6 +163,8 @@ def process_enriched_event(event):
     event_type = event["event_type"]
     if event_type in deployment_types:
         enriched_event = process_commits_per_release_event(event, enriched_event)
+
+    enriched_event["enriched_metadata"] = json.dumps(enriched_event["enriched_metadata"])
     return enriched_event
 
 if __name__ == "__main__":

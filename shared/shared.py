@@ -64,7 +64,9 @@ def insert_row_into_events_enriched(event):
     dataset_id = "four_keys"
     table_id = "events_enriched"
 
-    if is_unique(client, event["events_raw_signature"]):
+    if is_unique(client,
+                 event["events_raw_signature"],
+                 table_params=("events_enriched", "events_raw_signature")):
         table_ref = client.dataset(dataset_id).table(table_id)
         table = client.get_table(table_ref)
 
@@ -88,9 +90,12 @@ def insert_row_into_events_enriched(event):
             print(json.dumps(entry))
 
 
-def is_unique(client, signature):
-    sql = "SELECT signature FROM four_keys.events_raw WHERE signature = '%s'"
-    query_job = client.query(sql % signature)
+def is_unique(client, signature, table_params=("four_keys.events_raw", "signature")):
+    table_name = table_params[0]
+    col_name = table_params[1]
+
+    sql = f"SELECT {col_name} FROM four_keys.{table_name} WHERE {col_name} = '{signature}'"
+    query_job = client.query(sql)
     results = query_job.result()
     return not results.total_rows
 
